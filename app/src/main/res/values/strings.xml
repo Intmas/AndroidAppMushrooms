@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">AppFirst</string>
+    <string name="add_photo">Add photo</string>
+    <string name="new_photo">New photo</string>
+    <string name="add_video">Add video</string>
+    <string name="new_video">New video</string>
 </resources>
