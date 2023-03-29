@@ -27,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnAddVideo;
     private Button btnNewVideo;
     private static final int PICK_IMAGES_CODE = 0;
+    private static final int PICK_VIDEO_REQUEST = 0;
     private static final int REQUEST_CODE_VIDEO_CAPTURE = 2607;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         btnAddVideo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
+                pickVideoIntent();
             }
         });
 
@@ -67,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void getNewImage() {
         Intent openCamera = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        startActivityForResult(openCamera, 100);
+        startActivityForResult(openCamera, PICK_IMAGES_CODE);
     }
     private void pickImageIntent() {
         Intent intent = new Intent();
@@ -78,7 +79,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void pickVideoIntent() {
-
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setType("video/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Select Video"), REQUEST_CODE_VIDEO_CAPTURE );
     }
 
     private void recordVideo() {
