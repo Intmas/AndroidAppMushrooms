@@ -4,4 +4,5 @@
     <string name="new_photo">New photo</string>
     <string name="add_video">Add video</string>
     <string name="new_video">New video</string>
+    <string name="goToMLKit">Go to MLKit</string>
 </resources>

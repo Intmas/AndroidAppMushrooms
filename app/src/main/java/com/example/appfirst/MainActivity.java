@@ -3,13 +3,17 @@ package com.example.appfirst;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.service.controls.templates.ThumbnailTemplate;
 import android.view.SoundEffectConstants;
 import android.view.View;
 import android.widget.Button;
@@ -26,9 +30,11 @@ public class MainActivity extends AppCompatActivity {
     private Button btnNewPhoto;
     private Button btnAddVideo;
     private Button btnNewVideo;
+    int imageSize = 224;
     private static final int PICK_IMAGES_CODE = 0;
-    private static final int PICK_VIDEO_REQUEST = 0;
-    private static final int REQUEST_CODE_VIDEO_CAPTURE = 2607;
+    private static final int IMAGES_CAPTURE_CODE = 1;
+    private static final int PICK_VIDEO_CODE = 2;
+    private static final int VIDEO_CAPTURE_CODE = 2607;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -38,40 +44,54 @@ public class MainActivity extends AppCompatActivity {
         btnAddPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                pickImageIntent();
+                if(checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    pickImageIntent();
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
+                }
             }
         });
 
         btnNewPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                getNewImage();
+                if(checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    getNewImage();
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
+                }
             }
         });
 
         btnAddVideo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                pickVideoIntent();
+                if(checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    pickVideoIntent();
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
+                }
             }
         });
 
         btnNewVideo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                recordVideo();
-//                Intent intent = new Intent(MainActivity.this, UserInstruction.class);
-//                startActivity(intent);
+                if(checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    recordVideo();
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
+                }
             }
         });
     }
 
     private void getNewImage() {
         Intent openCamera = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        startActivityForResult(openCamera, PICK_IMAGES_CODE);
+        startActivityForResult(openCamera, IMAGES_CAPTURE_CODE);
     }
     private void pickImageIntent() {
-        Intent intent = new Intent();
+        Intent intent = new Intent(Intent.ACTION_PICK);
         intent.setType("image/*");
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         intent.setAction(Intent.ACTION_GET_CONTENT);
@@ -82,29 +102,36 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(Intent.ACTION_PICK);
         intent.setType("video/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);
-        startActivityForResult(Intent.createChooser(intent, "Select Video"), REQUEST_CODE_VIDEO_CAPTURE );
+        startActivityForResult(Intent.createChooser(intent, "Select Video"), VIDEO_CAPTURE_CODE);
     }
 
     private void recordVideo() {
         Intent recordVideo = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-        startActivityForResult(recordVideo, REQUEST_CODE_VIDEO_CAPTURE);
-
-//        if(recordVideo.resolveActivity(getPackageManager()) == null) {
-//            startActivityForResult(recordVideo, REQUEST_CODE_VIDEO_CAPTURE);
-//        }
+        startActivityForResult(recordVideo, VIDEO_CAPTURE_CODE);
     }
+
+
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode == REQUEST_CODE_VIDEO_CAPTURE && resultCode == RESULT_OK) {
-            Uri videoUri = data.getData();
-            videoView.setVideoURI(videoUri);
-            videoView.start();
-        } else {
-            //if(requestCode == PICK_IMAGES_CODE && resultCode == RESULT_OK) {
-                Bitmap photo = (Bitmap) data.getExtras().get("data");
-                imageView.setImageBitmap(photo);
-           // }
+        if(resultCode == RESULT_OK) {
+            switch (requestCode) {
+                case (IMAGES_CAPTURE_CODE):
+                    Bitmap image = (Bitmap) data.getExtras().get("data");
+                    int dimension = Math.min(image.getWidth(), image.getHeight());
+                    image = ThumbnailUtils.extractThumbnail(image, dimension, dimension);
+                    imageView.setImageBitmap(image);
+                    break;
+                case (PICK_IMAGES_CODE):
+                    Uri image1 = data.getData();
+                    imageView.setImageURI(image1);
+                    break;
+                case (VIDEO_CAPTURE_CODE):
+                    Uri videoUri = data.getData();
+                    videoView.setVideoURI(videoUri);
+                    videoView.start();
+                    break;
+            }
         }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void initViews(){
