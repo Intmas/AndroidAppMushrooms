@@ -18,11 +18,25 @@ import android.view.SoundEffectConstants;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.VideoView;
 
+
+import java.io.IOException;
 import java.sql.SQLOutput;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String MODEL_PATH = "model.tflite";
+    private static final boolean QUANT = false;
+    private static final String LABEL_PATH = "labels.txt";
+    private static final int INPUT_SIZE = 224;
+
+    private Classifier classifier;
+    private Executor executor = Executors.newSingleThreadExecutor();
 
     private ImageView imageView;
     private VideoView videoView;
@@ -30,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnNewPhoto;
     private Button btnAddVideo;
     private Button btnNewVideo;
+    private TextView textViewResult;
     int imageSize = 224;
     private static final int PICK_IMAGES_CODE = 0;
     private static final int IMAGES_CAPTURE_CODE = 1;
@@ -40,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         initViews();
+        initTensorFlowAndLoadModel();
 
         btnAddPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -84,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
     }
 
     private void getNewImage() {
@@ -96,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         intent.setAction(Intent.ACTION_GET_CONTENT);
         startActivityForResult(Intent.createChooser(intent, "Select Image(s)"), PICK_IMAGES_CODE);
+
     }
 
     private void pickVideoIntent() {
@@ -116,13 +134,33 @@ public class MainActivity extends AppCompatActivity {
             switch (requestCode) {
                 case (IMAGES_CAPTURE_CODE):
                     Bitmap image = (Bitmap) data.getExtras().get("data");
-                    int dimension = Math.min(image.getWidth(), image.getHeight());
-                    image = ThumbnailUtils.extractThumbnail(image, dimension, dimension);
+                    image = ThumbnailUtils.extractThumbnail(image, image.getWidth(), image.getHeight());
                     imageView.setImageBitmap(image);
+                    image = Bitmap.createScaledBitmap(image, INPUT_SIZE, INPUT_SIZE, false);
+                    final List<Classifier.Recognition> results = classifier.recognizeImage(image);
+                    textViewResult.setText(results.toString());
                     break;
                 case (PICK_IMAGES_CODE):
-                    Uri image1 = data.getData();
-                    imageView.setImageURI(image1);
+                    Uri imageUri = data.getData();
+//                    imageView.setImageURI(imageUri);
+                    try {
+                        Bitmap bitmap1 = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
+                        bitmap1 = Bitmap.createScaledBitmap(bitmap1, INPUT_SIZE, INPUT_SIZE, false);
+                        imageView.setImageBitmap(bitmap1);
+
+                        final List<Classifier.Recognition> results1 = classifier.recognizeImage(bitmap1);
+                        textViewResult.setText(results1.toString());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+//                    Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+//                    bitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
+//
+//                    imageView.setImageBitmap(bitmap);
+//                    final List<Classifier.Recognition> results = classifier.recognizeImage(bitmap);
+//                    textViewResult.setText(results.toString());
+
                     break;
                 case (VIDEO_CAPTURE_CODE):
                     Uri videoUri = data.getData();
@@ -134,6 +172,46 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                classifier.close();
+            }
+        });
+    }
+
+    private void initTensorFlowAndLoadModel() {
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    classifier = TensorFlowImageClassifier.create(
+                            getAssets(),
+                            MODEL_PATH,
+                            LABEL_PATH,
+                            INPUT_SIZE,
+                            QUANT);
+                    makeButtonVisible();
+                } catch (final Exception e) {
+                    throw new RuntimeException("Error initializing TensorFlow!", e);
+                }
+            }
+        });
+    }
+
+    private void makeButtonVisible() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                btnAddPhoto.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+
     private void initViews(){
         imageView = findViewById(R.id.captureImage);
         videoView = findViewById(R.id.videoView);
@@ -141,5 +219,6 @@ public class MainActivity extends AppCompatActivity {
         btnNewPhoto = findViewById(R.id.btnNewPhoto);
         btnAddVideo = findViewById(R.id.btnAddVideo);
         btnNewVideo = findViewById(R.id.btnNewVideo);
+        textViewResult = findViewById(R.id.textViewResult);
     }
 }

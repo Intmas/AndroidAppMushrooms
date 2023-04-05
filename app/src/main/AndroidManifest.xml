@@ -15,9 +15,6 @@
         android:theme="@style/Theme.AppFirst"
         tools:targetApi="31">
         <activity
-            android:name=".TestMLKit"
-            android:exported="false" />
-        <activity
             android:name=".UserInstruction"
             android:exported="false" />
         <activity
