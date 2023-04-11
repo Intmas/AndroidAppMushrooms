@@ -2,7 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <uses-feature android:name="android.hardware.camera2" />
 
     <application
@@ -15,8 +16,16 @@
         android:theme="@style/Theme.AppFirst"
         tools:targetApi="31">
         <activity
-            android:name=".UserInstruction"
+            android:name=".StartFrame2"
             android:exported="false" />
+        <activity
+            android:name=".StartFrame1"
+            android:exported="false" />
+
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">

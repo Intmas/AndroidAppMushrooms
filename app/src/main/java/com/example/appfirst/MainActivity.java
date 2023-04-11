@@ -4,26 +4,26 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
-import android.app.Activity;
-import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.service.controls.templates.ThumbnailTemplate;
-import android.view.SoundEffectConstants;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.VideoView;
 
 
 import java.io.IOException;
-import java.sql.SQLOutput;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -44,18 +44,43 @@ public class MainActivity extends AppCompatActivity {
     private Button btnNewPhoto;
     private Button btnAddVideo;
     private Button btnNewVideo;
+    private Button btnTest;
+    private Button btnTest2;
     private TextView textViewResult;
+    private TextView textViewTest;
+    private ImageView imgFrame1;
+    private ImageView imgFrame2;
+    private EditText editText;
+    private Switch switch1;
     int imageSize = 224;
     private static final int PICK_IMAGES_CODE = 0;
     private static final int IMAGES_CAPTURE_CODE = 1;
     private static final int PICK_VIDEO_CODE = 2;
     private static final int VIDEO_CAPTURE_CODE = 2607;
+
+    public static final String SHARE_PREFS = "sharedPrefs";
+    public static final String CheckInstruction = "1";
+    private FrameLayout popUp;
+
+
+    private String text;
+    private boolean switchOff;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         initViews();
         initTensorFlowAndLoadModel();
+
+        SharedPreferences pref = getApplicationContext().getSharedPreferences("MyPref", 0); // 0 - for private mode
+        SharedPreferences.Editor editor = pref.edit();
+
+        if (pref.contains(CheckInstruction)) {
+            showStartActivity();
+            textViewTest.setText(pref.getString(CheckInstruction, ""));
+            editor.putString(CheckInstruction, "1");
+            editor.commit();
+        }
 
         btnAddPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -101,6 +126,28 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        loadData();
+
+
+//        editor.putInt(CheckInstruction, "string value"); // Storing string
+//
+//        editor.commit(); // commit changes
+//
+//        if (pref.contains(CheckInstruction)) {
+//            textViewTest.setText(pref.getString(CheckInstruction, ""));
+//        }
+
+    }
+
+    private void showStartActivity() {
+        //start popup activity
+
+        Intent intent = new Intent(MainActivity.this, StartFrame1.class);
+        startActivity(intent);
+    }
+
+    public void loadData(){
+
     }
 
     private void getNewImage() {
@@ -128,7 +175,6 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(recordVideo, VIDEO_CAPTURE_CODE);
     }
 
-
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if(resultCode == RESULT_OK) {
             switch (requestCode) {
@@ -154,18 +200,27 @@ public class MainActivity extends AppCompatActivity {
                         throw new RuntimeException(e);
                     }
 
-//                    Bitmap bitmap = (Bitmap) data.getExtras().get("data");
-//                    bitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
-//
-//                    imageView.setImageBitmap(bitmap);
-//                    final List<Classifier.Recognition> results = classifier.recognizeImage(bitmap);
-//                    textViewResult.setText(results.toString());
-
                     break;
                 case (VIDEO_CAPTURE_CODE):
                     Uri videoUri = data.getData();
+
+                    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                    retriever.setDataSource(this, videoUri);
+
+                    imgFrame1.setImageBitmap(retriever.getFrameAtTime(200,MediaMetadataRetriever.OPTION_CLOSEST));
+                    imgFrame2.setImageBitmap(retriever.getFrameAtTime(10000000,MediaMetadataRetriever.OPTION_CLOSEST));
+
                     videoView.setVideoURI(videoUri);
                     videoView.start();
+
+                    Bitmap img = (Bitmap) retriever.getFrameAtTime(200,MediaMetadataRetriever.OPTION_CLOSEST);
+                    img = Bitmap.createScaledBitmap(img, INPUT_SIZE, INPUT_SIZE, false);
+                    final List<Classifier.Recognition> results2 = classifier.recognizeImage(img);
+                    textViewResult.setText(results2.toString());
+                    imageView.setImageBitmap(img);
+                    System.out.println("******************************");
+                    System.out.println(results2.toString());
+
                     break;
             }
         }
@@ -211,14 +266,22 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
     private void initViews(){
+
         imageView = findViewById(R.id.captureImage);
+        imgFrame1 = findViewById(R.id.imgFrame1);
+        imgFrame2 = findViewById(R.id.imgFrame2);
         videoView = findViewById(R.id.videoView);
         btnAddPhoto = findViewById(R.id.btnAddPhoto);
         btnNewPhoto = findViewById(R.id.btnNewPhoto);
         btnAddVideo = findViewById(R.id.btnAddVideo);
         btnNewVideo = findViewById(R.id.btnNewVideo);
+        //btnTest = findViewById(R.id.btnTest);
+        //btnTest2 = findViewById(R.id.btnTest2);
         textViewResult = findViewById(R.id.textViewResult);
+        textViewTest = findViewById(R.id.textViewTest);
+        //editText = findViewById(R.id.editText);
+        //switch1 = findViewById(R.id.switch1);
+//        popUp = findViewById(R.id.popUp);
     }
 }
