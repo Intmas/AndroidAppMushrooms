@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.RectF;
 import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
@@ -23,6 +24,13 @@ import android.widget.TextView;
 import android.widget.VideoView;
 
 
+import com.example.appfirst.ml.ModelWithMetadata;
+import com.google.android.gms.common.util.ScopeUtil;
+
+import org.tensorflow.lite.gpu.CompatibilityList;
+import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.support.model.Model;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -30,41 +38,34 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String MODEL_PATH = "model.tflite";
+    private static final String MODEL_PATH = "model_with_metadata.tflite";
     private static final boolean QUANT = false;
-    private static final String LABEL_PATH = "labels.txt";
-    private static final int INPUT_SIZE = 224;
+    private static final String LABEL_PATH = "tflite_label_map.txt";
+    private static final int INPUT_SIZE = 640;
 
     private Classifier classifier;
     private Executor executor = Executors.newSingleThreadExecutor();
 
-    private ImageView imageView;
-    private VideoView videoView;
     private Button btnAddPhoto;
     private Button btnNewPhoto;
     private Button btnAddVideo;
     private Button btnNewVideo;
-    private Button btnTest;
-    private Button btnTest2;
+
     private TextView textViewResult;
-    private TextView textViewTest;
+
+    private ImageView imageView;
     private ImageView imgFrame1;
     private ImageView imgFrame2;
-    private EditText editText;
-    private Switch switch1;
+
+    private VideoView videoView;
+
     int imageSize = 224;
     private static final int PICK_IMAGES_CODE = 0;
     private static final int IMAGES_CAPTURE_CODE = 1;
     private static final int PICK_VIDEO_CODE = 2;
     private static final int VIDEO_CAPTURE_CODE = 2607;
-
-    public static final String SHARE_PREFS = "sharedPrefs";
     public static final String CheckInstruction = "0";
-    private FrameLayout popUp;
 
-
-    private String text;
-    private boolean switchOff;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,14 +73,13 @@ public class MainActivity extends AppCompatActivity {
         initViews();
         initTensorFlowAndLoadModel();
 
-        SharedPreferences pref = getApplicationContext().getSharedPreferences("MyPref", 0); // 0 - for private mode
-        SharedPreferences.Editor editor = pref.edit();
+        SharedPreferences sp = getApplicationContext().getSharedPreferences("MyPref", 0);
+        SharedPreferences.Editor editor = sp.edit();
 
-        if (!pref.contains(CheckInstruction)) {
+        if (!sp.contains(CheckInstruction)) {
             editor.putString(CheckInstruction, "1");
             editor.commit();
             showStartActivity();
-            //textViewTest.setText(pref.getString(CheckInstruction, ""));
         }
 
         btnAddPhoto.setOnClickListener(new View.OnClickListener() {
@@ -127,16 +127,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         loadData();
-
-
-//        editor.putInt(CheckInstruction, "string value"); // Storing string
-//
-//        editor.commit(); // commit changes
-//
-//        if (pref.contains(CheckInstruction)) {
-//            textViewTest.setText(pref.getString(CheckInstruction, ""));
-//        }
-
     }
 
     private void showStartActivity() {
@@ -175,6 +165,43 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(recordVideo, VIDEO_CAPTURE_CODE);
     }
 
+    private void classifyImage(Bitmap bitmap){
+        try {
+            Model.Options options;
+            CompatibilityList compatList = new CompatibilityList();
+
+            if(compatList.isDelegateSupportedOnThisDevice()){
+                // if the device has a supported GPU, add the GPU delegate
+                options = new Model.Options.Builder().setDevice(Model.Device.GPU).build();
+            } else {
+                // if the GPU is not supported, run on 4 threads
+                options = new Model.Options.Builder().setNumThreads(4).build();
+            }
+
+            ModelWithMetadata model = ModelWithMetadata.newInstance(getApplicationContext(), options);
+            // Creates inputs for reference.
+            TensorImage image = TensorImage.fromBitmap(bitmap);
+
+            // Runs model inference and gets result.
+            ModelWithMetadata.Outputs outputs = model.process(image);
+            ModelWithMetadata.DetectionResult detectionResult;
+            String text = "";
+
+            for (int i = 0; i < 3; i++) {
+                detectionResult = outputs.getDetectionResultList().get(i);
+                float location = detectionResult.getScoreAsFloat();
+                //RectF category = detectionResult.getLocationAsRectF();
+                String score = detectionResult.getCategoryAsString();
+
+                text += score + " " + location + "\n";
+            }
+            textViewResult.setText(text);
+            model.close();
+        } catch (IOException e) {
+            // TODO Handle the exception
+        }
+    }
+
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if(resultCode == RESULT_OK) {
             switch (requestCode) {
@@ -183,9 +210,11 @@ public class MainActivity extends AppCompatActivity {
                     image = ThumbnailUtils.extractThumbnail(image, image.getWidth(), image.getHeight());
                     imageView.setImageBitmap(image);
                     image = Bitmap.createScaledBitmap(image, INPUT_SIZE, INPUT_SIZE, false);
-                    final List<Classifier.Recognition> results = classifier.recognizeImage(image);
-                    textViewResult.setText(results.toString());
+                    //final List<Classifier.Recognition> results = classifier.recognizeImage(image);
+                    //textViewResult.setText(results.toString());
+                    classifyImage(image);
                     break;
+
                 case (PICK_IMAGES_CODE):
                     Uri imageUri = data.getData();
 //                    imageView.setImageURI(imageUri);
@@ -193,14 +222,15 @@ public class MainActivity extends AppCompatActivity {
                         Bitmap bitmap1 = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
                         bitmap1 = Bitmap.createScaledBitmap(bitmap1, INPUT_SIZE, INPUT_SIZE, false);
                         imageView.setImageBitmap(bitmap1);
-
-                        final List<Classifier.Recognition> results1 = classifier.recognizeImage(bitmap1);
-                        textViewResult.setText(results1.toString());
+                        imageView.setImageBitmap(bitmap1);
+                        classifyImage(bitmap1);
+                        //final List<Classifier.Recognition> results = classifier.recognizeImage(bitmap1);
+                        //textViewResult.setText(results.toString());
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-
                     break;
+
                 case (VIDEO_CAPTURE_CODE):
                     Uri videoUri = data.getData();
 
@@ -215,12 +245,11 @@ public class MainActivity extends AppCompatActivity {
 
                     Bitmap img = (Bitmap) retriever.getFrameAtTime(200,MediaMetadataRetriever.OPTION_CLOSEST);
                     img = Bitmap.createScaledBitmap(img, INPUT_SIZE, INPUT_SIZE, false);
-                    final List<Classifier.Recognition> results2 = classifier.recognizeImage(img);
-                    textViewResult.setText(results2.toString());
+                    img = img.copy(Bitmap.Config.ARGB_8888, true);
                     imageView.setImageBitmap(img);
-                    System.out.println("******************************");
-                    System.out.println(results2.toString());
-
+                    classifyImage(img);
+                    //final List<Classifier.Recognition> results2 = classifier.recognizeImage(img);
+                    //textViewResult.setText(results2.toString());
                     break;
             }
         }
@@ -276,12 +305,7 @@ public class MainActivity extends AppCompatActivity {
         btnNewPhoto = findViewById(R.id.btnNewPhoto);
         btnAddVideo = findViewById(R.id.btnAddVideo);
         btnNewVideo = findViewById(R.id.btnNewVideo);
-        //btnTest = findViewById(R.id.btnTest);
-        //btnTest2 = findViewById(R.id.btnTest2);
         textViewResult = findViewById(R.id.textViewResult);
-        textViewTest = findViewById(R.id.textViewTest);
-        //editText = findViewById(R.id.editText);
-        //switch1 = findViewById(R.id.switch1);
-//        popUp = findViewById(R.id.popUp);
+
     }
 }

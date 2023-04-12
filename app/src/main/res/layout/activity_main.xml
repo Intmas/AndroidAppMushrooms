@@ -39,16 +39,24 @@
         android:layout_margin="8dp"
         android:text="@string/new_video" />
 
+
+    <TextView
+        android:id="@+id/textViewResult"
+        android:layout_width="match_parent"
+        android:layout_height="123dp"
+        android:padding="20dp"
+        android:textSize="20dp" />
+
+    <ImageView
+        android:id="@+id/captureImage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center" />
+
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
-
-        <ImageView
-            android:id="@+id/captureImage"
-            android:layout_width="100dp"
-            android:layout_height="60dp"
-            android:layout_gravity="center" />
 
         <ImageView
             android:id="@+id/imgFrame1"
@@ -70,43 +78,5 @@
             android:layout_height="match_parent" />
 
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/textViewResult"
-        android:layout_width="match_parent"
-        android:layout_height="123dp"
-        android:padding="20dp"
-        android:textSize="20dp" />
-
-    <TextView
-        android:id="@+id/textViewTest"
-        android:layout_width="match_parent"
-        android:layout_height="95dp"
-        android:padding="20dp"
-        android:textSize="20dp" />
-
-<!--    <EditText-->
-<!--        android:id="@+id/editText"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:hint="text"-->
-<!--        android:layout_height="41dp" />-->
-
-<!--    <Button-->
-<!--        android:id="@+id/btnTest"-->
-<!--        android:text="Add"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="wrap_content" />-->
-
-<!--    <Button-->
-<!--        android:id="@+id/btnTest2"-->
-<!--        android:text="save"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="wrap_content" />-->
-
-<!--    <Switch-->
-<!--    android:id="@+id/switch1"-->
-<!--    android:layout_width="match_parent"-->
-<!--        android:layout_gravity="center"-->
-<!--    android:layout_height="wrap_content" />-->
 
 </LinearLayout>
