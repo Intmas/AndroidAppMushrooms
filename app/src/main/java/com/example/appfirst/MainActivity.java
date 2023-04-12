@@ -59,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int VIDEO_CAPTURE_CODE = 2607;
 
     public static final String SHARE_PREFS = "sharedPrefs";
-    public static final String CheckInstruction = "1";
+    public static final String CheckInstruction = "0";
     private FrameLayout popUp;
 
 
@@ -75,11 +75,11 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences pref = getApplicationContext().getSharedPreferences("MyPref", 0); // 0 - for private mode
         SharedPreferences.Editor editor = pref.edit();
 
-        if (pref.contains(CheckInstruction)) {
-            showStartActivity();
-            textViewTest.setText(pref.getString(CheckInstruction, ""));
+        if (!pref.contains(CheckInstruction)) {
             editor.putString(CheckInstruction, "1");
             editor.commit();
+            showStartActivity();
+            //textViewTest.setText(pref.getString(CheckInstruction, ""));
         }
 
         btnAddPhoto.setOnClickListener(new View.OnClickListener() {
@@ -141,9 +141,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void showStartActivity() {
         //start popup activity
-
         Intent intent = new Intent(MainActivity.this, StartFrame1.class);
         startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
     public void loadData(){

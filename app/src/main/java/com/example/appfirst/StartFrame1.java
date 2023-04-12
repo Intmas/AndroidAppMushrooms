@@ -21,9 +21,13 @@ public class StartFrame1 extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent(StartFrame1.this, StartFrame2.class);
                 startActivity(intent);
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             }
         });
     }
 
+    public void finish(){
+
+    }
 
 }
