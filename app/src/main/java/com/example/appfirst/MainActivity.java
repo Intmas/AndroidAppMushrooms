@@ -1,14 +1,10 @@
 package com.example.appfirst;
 
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.RectF;
 import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
@@ -16,23 +12,25 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.VideoView;
 
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.appfirst.ml.ModelWithMetadata;
-import com.google.android.gms.common.util.ScopeUtil;
+import com.example.appfirst.ml.ModelMush1;
 
+import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.gpu.CompatibilityList;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.model.Model;
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.IOException;
-import java.util.List;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -41,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String MODEL_PATH = "model_with_metadata.tflite";
     private static final boolean QUANT = false;
     private static final String LABEL_PATH = "tflite_label_map.txt";
-    private static final int INPUT_SIZE = 640;
+    private static final int INPUT_SIZE = 160;
 
     private Classifier classifier;
     private Executor executor = Executors.newSingleThreadExecutor();
@@ -65,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int PICK_VIDEO_CODE = 2;
     private static final int VIDEO_CAPTURE_CODE = 2607;
     public static final String CheckInstruction = "0";
+    public String aaa = "0";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -178,29 +177,94 @@ public class MainActivity extends AppCompatActivity {
                 options = new Model.Options.Builder().setNumThreads(4).build();
             }
 
-            ModelWithMetadata model = ModelWithMetadata.newInstance(getApplicationContext(), options);
+            ModelMush1 model = ModelMush1.newInstance(getApplicationContext(), options);
+
+
             // Creates inputs for reference.
-            TensorImage image = TensorImage.fromBitmap(bitmap);
+            TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, 160, 160, 3}, DataType.FLOAT32);
+            inputFeature0.loadBuffer(convertBitmapToByteBuffer(bitmap));
+
 
             // Runs model inference and gets result.
-            ModelWithMetadata.Outputs outputs = model.process(image);
-            ModelWithMetadata.DetectionResult detectionResult;
-            String text = "";
+            ModelMush1.Outputs outputs = model.process(inputFeature0);
+            TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
 
-            for (int i = 0; i < 3; i++) {
-                detectionResult = outputs.getDetectionResultList().get(i);
-                float location = detectionResult.getScoreAsFloat();
-                //RectF category = detectionResult.getLocationAsRectF();
-                String score = detectionResult.getCategoryAsString();
+            float[] data1=outputFeature0.getFloatArray();
+            textViewResult.setText(outputFeature0.getDataType().toString());
+            String s = String.valueOf(data1[1]) + "\n" + String.valueOf(data1[2]) + "\n" + String.valueOf(data1[3]);
+            textViewResult.setText(s);
 
-                text += score + " " + location + "\n";
-            }
-            textViewResult.setText(text);
+//            float[] confidences = outputFeature0.getFloatArray();
+//            int maxPos = 0;
+//            float maxConfidence = 0;
+//            for(int i = 0; i < confidences.length; i++){
+//                if(confidences[i] > maxConfidence){
+//                    maxConfidence = confidences[i];
+//                    maxPos = i;
+//                }
+//            }
+//            String[] classes = {"0", "Odnobochka", "Poganka", "3"};
+//            textViewResult.setText(classes[maxPos]);
+//            String s = "";
+//            for(int i = 0; i < classes.length; i++){
+//                s +=  classes[i] + " " + confidences[i];
+//            }
+//            textViewResult.setText(aaa);
+//            aaa += "0";
+
+            // Releases model resources if no longer used.
             model.close();
+
+//            ModelWithMetadata model = ModelWithMetadata.newInstance(getApplicationContext(), options);
+//            // Creates inputs for reference.
+//            TensorImage image = TensorImage.fromBitmap(bitmap);
+//
+//            // Runs model inference and gets result.
+//            ModelWithMetadata.Outputs outputs = model.process(image);
+//            ModelWithMetadata.DetectionResult detectionResult;
+//            String text = "";
+//
+//            for (int i = 0; i < 3; i++) {
+//                detectionResult = outputs.getDetectionResultList().get(i);
+//                float location = detectionResult.getScoreAsFloat();
+//                //RectF category = detectionResult.getLocationAsRectF();
+//                String score = detectionResult.getCategoryAsString();
+//
+//                text += score + " " + location + "\n";
+//            }
+//            textViewResult.setText(text);
+//            model.close();
         } catch (IOException e) {
             // TODO Handle the exception
         }
     }
+
+
+    private ByteBuffer convertBitmapToByteBuffer(Bitmap bitmap) {
+        ByteBuffer byteBuffer;
+        final int BATCH_SIZE = 1;
+        final int PIXEL_SIZE = 3;
+
+        final int IMAGE_MEAN = 128;
+        final float IMAGE_STD = 128.0f;
+
+        byteBuffer = ByteBuffer.allocateDirect(4 * BATCH_SIZE * INPUT_SIZE * INPUT_SIZE * PIXEL_SIZE);
+
+        byteBuffer.order(ByteOrder.nativeOrder());
+        int[] intValues = new int[INPUT_SIZE * INPUT_SIZE];
+        bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
+        int pixel = 0;
+        for (int i = 0; i < INPUT_SIZE; ++i) {
+            for (int j = 0; j < INPUT_SIZE; ++j) {
+                final int val = intValues[pixel++];
+                byteBuffer.putFloat((((val >> 16) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
+                byteBuffer.putFloat((((val >> 8) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
+                byteBuffer.putFloat((((val) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
+            }
+        }
+        return byteBuffer;
+    }
+
 
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if(resultCode == RESULT_OK) {

@@ -71,10 +71,6 @@ public class TensorFlowImageClassifier implements Classifier {
         }
     }
 
-    public String checkWorking() {
-        return "TTTTTTT";
-    }
-
     @Override
     public void close() {
         interpreter.close();
