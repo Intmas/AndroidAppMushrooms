@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Bundle;
@@ -19,18 +20,17 @@ import android.widget.VideoView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.appfirst.ml.ModelWithMetadata;
-import com.example.appfirst.ml.ModelMush1;
+import com.example.appfirst.ml.ModelTest1;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.gpu.CompatibilityList;
-import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.model.Model;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -177,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
                 options = new Model.Options.Builder().setNumThreads(4).build();
             }
 
-            ModelMush1 model = ModelMush1.newInstance(getApplicationContext(), options);
+            ModelTest1 model = ModelTest1.newInstance(getApplicationContext(), options);
 
 
             // Creates inputs for reference.
@@ -186,54 +186,27 @@ public class MainActivity extends AppCompatActivity {
 
 
             // Runs model inference and gets result.
-            ModelMush1.Outputs outputs = model.process(inputFeature0);
+            ModelTest1.Outputs outputs = model.process(inputFeature0);
             TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
 
-            float[] data1=outputFeature0.getFloatArray();
-            textViewResult.setText(outputFeature0.getDataType().toString());
-            String s = String.valueOf(data1[1]) + "\n" + String.valueOf(data1[2]) + "\n" + String.valueOf(data1[3]);
-            textViewResult.setText(s);
+            String[] classes = {"Бледная поганка", "Лисичка", "Маслята", "Мышата", "Мухомор белый", "Степная однобочка"};
 
-//            float[] confidences = outputFeature0.getFloatArray();
-//            int maxPos = 0;
-//            float maxConfidence = 0;
-//            for(int i = 0; i < confidences.length; i++){
-//                if(confidences[i] > maxConfidence){
-//                    maxConfidence = confidences[i];
-//                    maxPos = i;
-//                }
-//            }
-//            String[] classes = {"0", "Odnobochka", "Poganka", "3"};
-//            textViewResult.setText(classes[maxPos]);
-//            String s = "";
-//            for(int i = 0; i < classes.length; i++){
-//                s +=  classes[i] + " " + confidences[i];
-//            }
-//            textViewResult.setText(aaa);
-//            aaa += "0";
 
-            // Releases model resources if no longer used.
+            float maxv = -1000;
+            int ind = 0;
+            for (int i = 0; i < 6; i++) {
+                float predict = outputFeature0.getFloatValue(i);
+                System.out.println("*******" + predict);
+                if(maxv < predict){
+                    maxv = predict;
+                    ind = i;
+                }
+            }
+            System.out.println("########" + maxv + " " + ind);
+            textViewResult.setText(classes[ind]);
+
+
             model.close();
-
-//            ModelWithMetadata model = ModelWithMetadata.newInstance(getApplicationContext(), options);
-//            // Creates inputs for reference.
-//            TensorImage image = TensorImage.fromBitmap(bitmap);
-//
-//            // Runs model inference and gets result.
-//            ModelWithMetadata.Outputs outputs = model.process(image);
-//            ModelWithMetadata.DetectionResult detectionResult;
-//            String text = "";
-//
-//            for (int i = 0; i < 3; i++) {
-//                detectionResult = outputs.getDetectionResultList().get(i);
-//                float location = detectionResult.getScoreAsFloat();
-//                //RectF category = detectionResult.getLocationAsRectF();
-//                String score = detectionResult.getCategoryAsString();
-//
-//                text += score + " " + location + "\n";
-//            }
-//            textViewResult.setText(text);
-//            model.close();
         } catch (IOException e) {
             // TODO Handle the exception
         }
@@ -257,9 +230,9 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < INPUT_SIZE; ++i) {
             for (int j = 0; j < INPUT_SIZE; ++j) {
                 final int val = intValues[pixel++];
-                byteBuffer.putFloat((((val >> 16) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
-                byteBuffer.putFloat((((val >> 8) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
-                byteBuffer.putFloat((((val) & 0xFF)-IMAGE_MEAN)/IMAGE_STD);
+                byteBuffer.putFloat(((val >> 16) & 0xFF)*(1.f/1));
+                byteBuffer.putFloat(((val >> 8) & 0xFF)*(1.f/1));
+                byteBuffer.putFloat(((val) & 0xFF)*(1.f/1));
             }
         }
         return byteBuffer;
@@ -284,9 +257,8 @@ public class MainActivity extends AppCompatActivity {
 //                    imageView.setImageURI(imageUri);
                     try {
                         Bitmap bitmap1 = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
+                        imageView.setImageBitmap(bitmap1);
                         bitmap1 = Bitmap.createScaledBitmap(bitmap1, INPUT_SIZE, INPUT_SIZE, false);
-                        imageView.setImageBitmap(bitmap1);
-                        imageView.setImageBitmap(bitmap1);
                         classifyImage(bitmap1);
                         //final List<Classifier.Recognition> results = classifier.recognizeImage(bitmap1);
                         //textViewResult.setText(results.toString());
@@ -307,10 +279,20 @@ public class MainActivity extends AppCompatActivity {
                     videoView.setVideoURI(videoUri);
                     videoView.start();
 
+                    ArrayList<Bitmap> rev = new ArrayList<Bitmap>();
+                    MediaPlayer mp = MediaPlayer.create(getBaseContext(), videoUri);
+                    int millis = mp.getDuration();
+
+                    for (int i=1000000;i<millis*1000;i+=1000000) {
+                        Bitmap bitmap=retriever.getFrameAtTime(i,MediaMetadataRetriever.OPTION_CLOSEST);
+                        rev.add(bitmap);
+
+                    }
+
                     Bitmap img = (Bitmap) retriever.getFrameAtTime(200,MediaMetadataRetriever.OPTION_CLOSEST);
                     img = Bitmap.createScaledBitmap(img, INPUT_SIZE, INPUT_SIZE, false);
                     img = img.copy(Bitmap.Config.ARGB_8888, true);
-                    imageView.setImageBitmap(img);
+//                    imageView.setImageBitmap(img);
                     classifyImage(img);
                     //final List<Classifier.Recognition> results2 = classifier.recognizeImage(img);
                     //textViewResult.setText(results2.toString());
@@ -362,9 +344,6 @@ public class MainActivity extends AppCompatActivity {
     private void initViews(){
 
         imageView = findViewById(R.id.captureImage);
-        imgFrame1 = findViewById(R.id.imgFrame1);
-        imgFrame2 = findViewById(R.id.imgFrame2);
-        videoView = findViewById(R.id.videoView);
         btnAddPhoto = findViewById(R.id.btnAddPhoto);
         btnNewPhoto = findViewById(R.id.btnNewPhoto);
         btnAddVideo = findViewById(R.id.btnAddVideo);
